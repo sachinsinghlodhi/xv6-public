@@ -6,7 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-
+#define ninf -123456
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -75,20 +75,42 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
-
+  	
   acquire(&ptable.lock);
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == UNUSED)
+    if(p->state == UNUSED) 
+    {
+      /*	  
+      =============>>>>Initialize with ninf(-123456) so that if alloc proc is by chance uable to run then we can return -1 by checkin day month year  
+      */	
+      p->creation.day = ninf; //<<<<<<=======================
+      p->creation.month = ninf; //<<<<<<=======================
+      p->creation.year = ninf; //<<<<<<=======================
+      p->lastswitchout.day = ninf; //<<<<<<=======================
+      p->lastswitchout.month = ninf; //<<<<<<=======================
+      p->lastswitchout.year = ninf; //<<<<<<=======================
+      p->lastswitchin.day = ninf; //<<<<<<=======================
+      p->lastswitchin.month = ninf; //<<<<<<=======================
+      p->lastswitchin.year = ninf; //<<<<<<=======================
       goto found;
+    }
 
   release(&ptable.lock);
   return 0;
 
 found:
+  cmostime(&(p->creation));//storing current time of creation	
+  //if process dont switch out then return time of creation so  storing time here
+  p->lastswitchout.day = p->creation.day; //<<<<<<=======================
+  p->lastswitchout.month = p->creation.month; //<<<<<<=======================
+  p->lastswitchout.year = p->creation.year; //<<<<<<=======================
+  p->lastswitchout.second = p->creation.second; //<<<<<<=======================
+  p->lastswitchout.minute = p->creation.minute; //<<<<<<=======================
+  p->lastswitchout.hour = p->creation.hour; //<<<<<<=======================
   p->state = EMBRYO;
   p->pid = nextpid++;
-
+  p->mem_alloc = 0;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -342,6 +364,7 @@ scheduler(void)
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
+      cmostime(&(p->lastswitchin));//<<<<<<<========================== storing current time of switch in
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
@@ -379,6 +402,7 @@ sched(void)
   intena = mycpu()->intena;
   swtch(&p->context, mycpu()->scheduler);
   mycpu()->intena = intena;
+  cmostime(&(p->lastswitchout));//<<<==================== storing current time of switch out
 }
 
 // Give up the CPU for one scheduling round.
@@ -532,3 +556,93 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+
+/* 
+g
+h
+H
+G
+""
+*/
+//<=================================================================DELIVERABLE 1 =========================================================================>
+int 
+helloWorld(void) {
+	cprintf("Hello World\n");
+	return 22;
+}
+
+//<=================================================================DELIVERABLE 2 =========================================================================>
+
+int 
+numOpenFiles(void) {
+	struct proc *currproc = myproc();
+	uint NFILES = 0;
+	
+	for (int i = 0; i < NOFILE; i++) {
+		if (currproc->ofile[i]) {
+			NFILES++;
+			//cprintf("%d ",currproc->ofile[i]);
+		} 
+	}
+	//cprintf("No of open files : %d \n", NFILES);
+	return NFILES;
+}
+
+
+//<=================================================================DELIVERABLE 3 =========================================================================>
+
+int 
+memAlloc(void) {
+	struct proc *currproc = myproc();
+	//cprintf("Heap Memory in Bytes : %d \n", p->mem_alloc);
+	//cprintf("Total Memory in Bytes : %d \n", p->sz);	
+	return currproc->mem_alloc;
+}
+
+
+//<=================================================================DELIVERABLE 4 =========================================================================>
+int 
+nullcheck(struct rtcdate c, struct rtcdate o, struct rtcdate i) {
+	if ((c.day == ninf && c.month == ninf && c.year == ninf) ||
+	    (o.day == ninf && o.month == ninf && o.year == ninf) ||
+	    (i.day == ninf && i.month == ninf && i.year == ninf))
+	    	return 1;
+	return 0;
+}
+int 
+getprocesstimedetails(void) {
+	struct proc *currproc = myproc();
+	//cprintf("creation : %d \n", (currproc->creation).second);
+	if (!currproc) return -1;
+	//check if the struct contains ninf(-123456) for day, month and year. If it is true then it means that the struct has default values and it has not been initialized in allocproc
+	//so return -1;
+	if (nullcheck(currproc->creation, currproc->lastswitchout, currproc->lastswitchin)) {
+	  cprintf("Return");
+	  return -1;
+	}  
+	
+	struct rtcdate c = currproc->creation;
+	struct rtcdate o = currproc->lastswitchout;
+	struct rtcdate i = currproc->lastswitchin;
+	cprintf("processCreationDateTime: \t \t %d : %d : %d : %d : %d : %d\n", c.second, c.minute, c.hour, c.day, c.month, c.year);
+	cprintf("processLastContextSwitchedOutDateTime: \t %d : %d : %d : %d : %d : %d\n", o.second, o.minute, o.hour, o.day, o.month, o.year);
+	cprintf("processLastContextSwitchedInDateTime: \t %d : %d : %d : %d : %d : %d\n", i.second, i.minute, i.hour, i.day, i.month, i.year);
+	return 1;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

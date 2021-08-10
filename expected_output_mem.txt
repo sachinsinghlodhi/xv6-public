@@ -1,0 +1,7 @@
+$ testcase1
+Memory allocated till now: 32768 bytes
+Memory allocated till now: 33792 bytes
+Memory allocated till now: 37888 bytes
+Memory allocated till now: 37888 bytes
+Memory allocated till now: 37878 bytes
+Memory allocated till now: 17878 bytes
