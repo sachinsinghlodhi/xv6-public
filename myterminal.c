@@ -4,23 +4,24 @@
 #include "user.h"
 #include "fcntl.h"
 // #include "string.h"
-
+char *commands[20];
+int leftIdx;
+int size;
 struct cmnds
 {
   char *cmndstr;
   char *left;
   int hasOp;
   char *right;
-  int type;
   int cmndlen;
   int subcmndlen;
 };
 
-
 int stringcpy(char *s, const char *t, int n)
 {
 
-  while (n-- > 0 && (*s++ = *t++) != 0);
+  while (n-- > 0 && (*s++ = *t++) != 0)
+    ;
   while (n-- > 0)
     *s++ = 0;
   return 0;
@@ -29,169 +30,267 @@ int stringcpy(char *s, const char *t, int n)
 int len(char *str)
 {
   int n = 0;
-  while(str[n]) n++;
+  while (str[n])
+    n++;
   return n;
 }
 
-struct cmnds *contains(struct cmnds *curr, char *operator)
+void checkIfExit(char *command)
 {
-  int i = 0, hasOp = 0, index = 0; 
-  int command_len = curr->cmndlen, string_len = len(operator);
-  char *command = curr->cmndstr, *ptr = operator;
-
-  for (i = 0; i < command_len - string_len; i++)
+  char *end = "Exit";
+  int kill = 1;
+  char *check = command;
+  for (int i = 0; i < 4; i++)
   {
-    hasOp = 0;
-    for (int j = 0; j < string_len; j++)
+    if (*check != end[i])
     {
-      if (ptr[j] != command[i + j])
-      {
+      kill = 0;
+      break;
+    }
+    check++;
 
-        hasOp = 1;
+    if (i == 3 && *check != '\0')
+      kill = 0;
+  }
+
+  if (kill == 1)
+    exit(0);
+}
+
+void separateCommands(char *buff)
+{
+  size = 0;
+  char *ptr;
+  int started = 0;
+  int idx = 0;
+  int i;
+  for (ptr = buff, i = 0; buff[i]; i++, ptr++)
+  {
+    if (started == 0)
+    {
+      started = 1;
+      commands[idx++] = ptr;
+    }
+
+    if (buff[i] == ' ')
+    {
+      started = 0;
+      buff[i] = '\0';
+    }
+    if (!buff[i + 1])
+    {
+      *(ptr++) = '\0';
+    }
+  }
+  size = idx;
+}
+
+int contains(char *buff)
+{
+  memset(commands, 0, sizeof(commands));
+  separateCommands(buff);
+  checkIfExit(commands[0]);
+  int operator= - 1;
+  leftIdx = 0;
+  for (int i = 0; i < size; i++)
+  {
+    int index = 0;
+    for (; commands[i][index];)
+    {
+      if (commands[i][index + 1])
+      {
+        if (commands[i][index] == '&' && commands[i][index + 1] == '&')
+        {
+          leftIdx = i;
+          operator= 1;
+          break;
+        }
+        if (commands[i][index] == '|' && commands[i][index + 1] == '|')
+        {
+          leftIdx = i;
+          operator= 2;
+          break;
+        }
+      }
+      if (commands[i][index] == '|')
+      {
+        leftIdx = i;
+        operator= 3;
         break;
       }
-    }
-    if (hasOp == 0)
-    {
-      index = i;
-      break;
-    }
-  }
-
-  if (index == 0)
-  {
-
-    curr->hasOp = 0;
-    return (struct cmnds *)curr;
-  }
-  curr->hasOp = 1;
-
-  curr->left = malloc((index) * sizeof(char));
-  memset(curr->left, 0, sizeof(curr->left));
-  stringcpy(curr->left, command, index - 1);
-  for (i = index + string_len; i < command_len; i++)
-  {
-    if (command[i] == ' ')
-      continue;
-    else
-    {
-      index = i;
-      break;
-    }
-  }
-  curr->right = malloc((command_len - index + 1) * sizeof(char));
-  memset(curr->right, 0, sizeof(curr->right));
-  stringcpy(curr->right, command + index, command_len - index + 1);
-  printf(1, "%s\n", curr->right);
-  return (struct cmnds *)curr;
-}
-
-char **genTokens(char *line)
-{
-  char **tokens = (char **)malloc(10 * sizeof(char *));
-  char *token = (char *)malloc(40 * sizeof(char));
-  int i, tokenIndex = 0, tokenNo = 0;
-
-  for (i = 0; i < strlen(line); i++)
-  {
-    char readChar = line[i];
-    if (readChar == ' ' || readChar == '\n' || readChar == '\t')    {
-      token[tokenIndex] = '\0';
-      if (tokenIndex != 0)
+      if (commands[i][index] == ';')
       {
-        tokens[tokenNo] = (char *)malloc(40 * sizeof(char));
-        strcpy(tokens[tokenNo++], token);
-        tokenIndex = 0;
+        leftIdx = i;
+        operator= 4;
+        break;
       }
-    }
-    else
-    {
-      token[tokenIndex++] = readChar;
+      index++;
     }
   }
-
-  free(token);
-  tokens[tokenNo] = 0;
-  return tokens;
+  return operator;
 }
 
-int getcmd(char *buf, int nbuf)
-{
-  printf(2, "MyShell>");
-  memset(buf, 0, nbuf);
-  gets(buf, nbuf);
-  if (buf[0] == 0)
-    return -1;
-  return 0;
-}
+// int utilExec(char **token, int cmndno)
+// {
+//   if (cmndno == 0)
+//     exit(-1);
+//   char **token1;
+//   char **token2;
+//   switch (cmndno)
+//   {
+//   default:
+//     printf(1, "Default case is executed \n");
+//   case 4:
+//     int fileDes[2];
+//     if (pipe(fileDes) == -1)
+//     {
+//       printf(1, "Can not create pipe\n");
+//       return -1;
+//     }
+//     int cid1;
+
+//     if ((cid1 = fork()) < 0)
+//     {
+
+//       printf(1, "fork has failed\n");
+//       exit(0);
+//     }
+//     else if (cid1 == 0)
+//     {
+
+//       close(fileDes[1]);
+//       dup(fileDes[0]);
+//       execute_cmnd(token, 6);
+//       close(fileDes[0]);
+//     }
+//     else
+//     {
+
+//       close(fileDes[0]);
+//       dup(fileDes[1]);
+//       execute_cmnd(token, 7);
+//       close(fileDes[1]);
+//       wait(0);
+//     }
+//     break;
+//   }
+//   return 0;
+// }
 
 void utilityFunction(char *buf)
 {
-  char **tokens;
-
-  struct cmnds *token;
-
-  token = malloc(sizeof(*token));
-
-  token->cmndstr = buf;
-  // tokens = genTokens(buf);
-
-  token->subcmndlen = strlen("&&");
-  token->cmndlen = strlen(buf);
-
-  if (contains(token, "&&")->hasOp == 1)
+  int operator= contains(buf);
+  int cid1;
+  int cid2;
+  int fileDesc[2];
+  char *leftCmnd[10];
+  memset(leftCmnd, 0, sizeof(leftCmnd));
+  char *rightCmnd[10];
+  memset(rightCmnd, 0, sizeof(rightCmnd));
+  for (int i = 0; i < leftIdx; i++)
   {
-
-    printf(1, "%s %d \n", token->left, strlen(token->left));
-    printf(1, "%s %d \n", token->right, strlen(token->right));
-
-    printf(1, "\n");
-    printf(1, "contains &&\n");
-    
-    tokens = genTokens(buf);
-    exec(tokens[0], tokens);
-
+    leftCmnd[i] = commands[i];
   }
-  else if (contains(token, "||")->hasOp == 1)
+  int idx = 0;
+  for (int i = leftIdx + 1; i < size; i++)
   {
-    printf(1, "%s %d \n", token->left, strlen(token->left));
-    printf(1, "%s %d \n", token->right, strlen(token->right));
-
-    printf(1, "\n");
-    printf(1, "contains ||\n");
+    rightCmnd[idx++] = commands[i];
   }
-  else if (contains(token, ";")->hasOp == 1)
+  int status;
+  switch (operator)
   {
+  default:
+    printf(1, "Default\n");
+    break;
+  case 1: //AND
+    cid1 = fork();
+    if (cid1 == 0)
+    {
+      exec(leftCmnd[0], leftCmnd);
+    }
+    status = -1;
+    while (cid1 != wait(&status))
+      ;
+    if (status != 0)
+    {
+      printf(1, "failed\n");
+      return;
+    }
 
-    printf(1, "%s %d \n", token->left, strlen(token->left));
-    printf(1, "%s %d \n", token->right, strlen(token->right));
+    cid2 = fork();
+    if (cid2 == 0)
+    {
+      exec(rightCmnd[0], rightCmnd);
+    }
+    wait(0);
+    return;
+  case 2: //OR
+    cid1 = fork();
+    if (cid1 == 0)
+    {
+      exec(leftCmnd[0], leftCmnd);
+    }
 
-    printf(1, "\n");
-    printf(1, "contains ;\n");
-  }
-  else if (contains(token, "|")->hasOp == 1)
-  {
-    printf(1, "%s %d \n", token->left, strlen(token->left));
-    printf(1, "%s %d \n", token->right, strlen(token->right));
+    status = 0;
+    wait(&status);
+    if (status != -1) //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    {
+      printf(1, "failed\n");
+      return;
+    }
 
-    printf(1, "\n");
-    printf(1, "contains |\n");
+    cid2 = fork();
+    if (cid2 == 0)
+    {
+      exec(rightCmnd[0], rightCmnd);
+    }
+    wait(0);
+    return;
+  case 3: //PIPE
+    if (pipe(fileDesc) < 0)
+    {
+      exit(-1);
+    }
+    cid1 = fork();
+    if (cid1 == 0)
+    {
+      close(1);
+      dup(fileDesc[1]);
+      close(fileDesc[0]);
+      close(fileDesc[1]);
+      exec(leftCmnd[0], leftCmnd);
+    }
+    cid2 = fork();
+    if (cid2 == 0)
+    {
+      close(0);
+      dup(fileDesc[0]);
+      close(fileDesc[0]);
+      close(fileDesc[1]);
+      exec(rightCmnd[0], rightCmnd);
+    }
+    close(fileDesc[0]);
+    close(fileDesc[1]);
+    wait(0);
+    wait(0);
+    return;
+  case 4: //PARALLEL EXEC
+    printf(1, "Default\n");
+    break;
+  case -1: //NORMAL EXEC
+    if (commands[0] == 0)
+      exit(-1);
+    exec(commands[0], commands);
+    printf(2, "exec %s failed\n", commands[0]);
+    return;
   }
-  else
-  {
-    // its time to directly execute command by calling exec method
-    printf(1, "call execute\n");
-    tokens = genTokens(buf);
-    exec(tokens[0], tokens);
-  }
+  return;
 }
 
 int main(void)
 {
   static char buf[100];
   int fd;
-
-  // Ensure that three file descriptors are open.
   while ((fd = open("console", O_RDWR)) >= 0)
   {
     if (fd >= 3)
@@ -201,12 +300,13 @@ int main(void)
     }
   }
 
-  // Read and run input commands.
-  while (getcmd(buf, sizeof(buf)) >= 0)
+  while (1)
   {
+    printf(2, "MyShell>");
+    memset(buf, 0, sizeof(buf));
+    gets(buf, sizeof(buf));
     if (buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' ')
     {
-      // Chdir must be called by the parent, not the child.
       buf[strlen(buf) - 1] = 0; // chop \n
       if (chdir(buf + 3) < 0)
         printf(2, "cannot cd %s\n", buf + 3);
@@ -218,8 +318,7 @@ int main(void)
       utilityFunction(buf);
     }
     wait(0);
-
-  } //while ends
+  }
 
   exit(0);
 }

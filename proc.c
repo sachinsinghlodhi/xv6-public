@@ -256,6 +256,7 @@ void exit(int exitStatus)
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
+  curproc->exitStatus = exitStatus;
 
   if (curproc == initproc)
     panic("init exiting");
@@ -277,7 +278,6 @@ void exit(int exitStatus)
 
   acquire(&ptable.lock);
 
-  curproc->exitStatus = exitStatus;
   // Parent might be sleeping in wait(0).
   wakeup1(curproc->parent);
 
@@ -319,8 +319,7 @@ int wait(int *exitStatus)
       if (p->state == ZOMBIE)
       {
         // Found one.
-        if (exitStatus)
-          *exitStatus = p->exitStatus;
+        *exitStatus = p->exitStatus;
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -648,11 +647,11 @@ int getprocesstimedetails(void)
 int psinfo(void)
 {
   char states[6][20] = {"UNUSED",
-                     "EMBRYO",
-                     "SLEEPING",
-                     "RUNNABLE",
-                     "RUNNING",
-                     "ZOMBIE"};
+                        "EMBRYO",
+                        "SLEEPING",
+                        "RUNNABLE",
+                        "RUNNING",
+                        "ZOMBIE"};
   struct proc *p;
   acquire(&ptable.lock);
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -663,8 +662,6 @@ int psinfo(void)
   release(&ptable.lock);
   return 1;
 }
-
-
 
 //<=================================================================DELIVERABLE 2 =========================================================================>
 
@@ -750,10 +747,8 @@ int getprocesstimedetails1(int pid)
   return 1;
 }
 
-
-
-
-int procinfo(int pid) {
+int procinfo(int pid)
+{
   struct proc *p;
 
   acquire(&ptable.lock);
@@ -765,7 +760,8 @@ int procinfo(int pid) {
     }
   }
   release(&ptable.lock);
-  if (p->state == UNUSED) {
+  if (p->state == UNUSED)
+  {
     cprintf("Illegal command or argument\n");
     return -1;
   }
