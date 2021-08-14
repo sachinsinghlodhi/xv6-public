@@ -36,5 +36,5 @@ int main(int argc, char *argv[])
   //printf(1,"Memory allocated till now: %d bytes\n", memAlloc());
   free(a);
   //printf(1,"Memory allocated till now: %d bytes\n", memAlloc());
-  exit();
+  exit(0);
 }

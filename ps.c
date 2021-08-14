@@ -3,8 +3,8 @@
 #include "user.h"
 #include "fcntl.h"
 
-int main(void)
+int main(int argc, char **argv)
 {
-    helloWorld();
+    psinfo();
     exit(0);
 }

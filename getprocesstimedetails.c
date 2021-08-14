@@ -6,5 +6,5 @@ int
 main(int argc, char **argv)
 {
   getprocesstimedetails();
-  exit();
+  exit(0);
 }

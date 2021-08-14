@@ -6,5 +6,5 @@ int
 main(int argc, char **argv)
 {
   helloWorld();
-  exit();
+  exit(0);
 }

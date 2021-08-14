@@ -54,6 +54,7 @@ struct proc {
   struct rtcdate creation;		//creation time 
   struct rtcdate lastswitchout;	//switchout time
   struct rtcdate lastswitchin;	//switchin time
+  int exitStatus;
 };
 
 // Process memory is laid out contiguously, low addresses first:

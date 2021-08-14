@@ -6,5 +6,5 @@ int
 main(int argc, char **argv)
 {
   memAlloc();
-  exit();
+  exit(0);
 }
