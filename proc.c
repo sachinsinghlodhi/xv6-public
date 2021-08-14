@@ -663,3 +663,114 @@ int psinfo(void)
   release(&ptable.lock);
   return 1;
 }
+
+
+
+//<=================================================================DELIVERABLE 2 =========================================================================>
+
+int numOpenFiles1(int pid)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->pid == pid)
+    {
+      break;
+    }
+  }
+  release(&ptable.lock);
+  uint NFILES = 0;
+
+  for (int i = 0; i < NOFILE; i++)
+  {
+    if (p->ofile[i])
+    {
+      NFILES++;
+      //cprintf("%d ",p->ofile[i]);
+    }
+  }
+  //cprintf("No of open files : %d \n", NFILES);
+  return NFILES;
+}
+
+//<=================================================================DELIVERABLE 3 =========================================================================>
+
+int memAlloc1(int pid)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->pid == pid)
+    {
+      break;
+    }
+  }
+  release(&ptable.lock);
+  //cprintf("Heap Memory in Bytes : %d \n", p->mem_alloc);
+  //cprintf("Total Memory in Bytes : %d \n", p->sz);
+  return p->mem_alloc;
+}
+
+//<=================================================================DELIVERABLE 4 =========================================================================>
+
+int getprocesstimedetails1(int pid)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->pid == pid)
+    {
+      break;
+    }
+  }
+  release(&ptable.lock);
+  //cprintf("creation : %d \n", (p->creation).second);
+  if (!p)
+    return -1;
+  //check if the struct contains ninf(-123456) for day, month and year. If it is true then it means that the struct has default values and it has not been initialized in allocproc
+  //so return -1;
+  if (nullcheck(p->creation, p->lastswitchout, p->lastswitchin))
+  {
+    cprintf("Return");
+    return -1;
+  }
+
+  struct rtcdate c = p->creation;
+  struct rtcdate o = p->lastswitchout;
+  struct rtcdate i = p->lastswitchin;
+  cprintf("processCreationDateTime: \t \t %d : %d : %d : %d : %d : %d\n", c.second, c.minute, c.hour, c.day, c.month, c.year);
+  cprintf("processLastContextSwitchedOutDateTime: \t %d : %d : %d : %d : %d : %d\n", o.second, o.minute, o.hour, o.day, o.month, o.year);
+  cprintf("processLastContextSwitchedInDateTime: \t %d : %d : %d : %d : %d : %d\n", i.second, i.minute, i.hour, i.day, i.month, i.year);
+  return 1;
+}
+
+
+
+
+int procinfo(int pid) {
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+  {
+    if (p->pid == pid)
+    {
+      break;
+    }
+  }
+  release(&ptable.lock);
+  if (p->state == UNUSED) {
+    cprintf("Illegal command or argument\n");
+    return -1;
+  }
+  cprintf("Number of files opened : %d\n", numOpenFiles1(pid));
+  cprintf("Memory allocated : %d\n", memAlloc1(pid));
+  getprocesstimedetails1(pid);
+  return 1;
+}
