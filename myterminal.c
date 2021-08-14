@@ -111,97 +111,102 @@ struct struct_command* contains(struct struct_command *parameter , char* ptrforc
     return (struct struct_command*)parameter;
 }
 
-// void
-// runcmd(struct cmd *cmd)
-// {
-//   int p[2];
-//   struct backcmd *bcmd;
-//   struct execcmd *ecmd;
-//   struct listcmd *lcmd;
-//   struct pipecmd *pcmd;
-//   struct redircmd *rcmd;
+char **tokenize(char *line)
+{
+  char **tokens = (char **)malloc(10 * sizeof(char *));
+  char *token = (char *)malloc(40 * sizeof(char));
+  int i, tokenIndex = 0, tokenNo = 0;
 
-//   if(cmd == 0)
-//     exit(0);
+  for(i =0; i < strlen(line); i++){
 
-//   switch(cmd->type){
-//   default:
-//     panic("runcmd");
+    char readChar = line[i];
 
-//   case EXEC:
-//     ecmd = (struct execcmd*)cmd;
-//     if(ecmd->argv[0] == 0)
-//       exit(0);
-//     exec(ecmd->argv[0], ecmd->argv);
-//     printf(2, "exec %s failed\n", ecmd->argv[0]);
-//     break;
+    if (readChar == ' ' || readChar == '\n' || readChar == '\t'){
+      token[tokenIndex] = '\0';
+      if (tokenIndex != 0){
+	tokens[tokenNo] = (char*)malloc(40*sizeof(char));
+	strcpy(tokens[tokenNo++], token);
+	tokenIndex = 0;
+      }
+    } else {
+      token[tokenIndex++] = readChar;
+    }
+  }
 
-//   case REDIR:
-//     rcmd = (struct redircmd*)cmd;
-//     close(rcmd->fd);
-//     if(open(rcmd->file, rcmd->mode) < 0){
-//       printf(2, "open %s failed\n", rcmd->file);
-//       exit(0);
-//     }
-//     runcmd(rcmd->cmd);
-//     break;
-
-//   case LIST:
-//     lcmd = (struct listcmd*)cmd;
-//     if(fork1() == 0)
-//       runcmd(lcmd->left);
-//     wait();
-//     runcmd(lcmd->right);
-//     break;
-
-//   case PIPE:
-//     pcmd = (struct pipecmd*)cmd;
-//     if(pipe(p) < 0)
-//       panic("pipe");
-//     if(fork1() == 0){
-//       close(1);
-//       dup(p[1]);
-//       close(p[0]);
-//       close(p[1]);
-//       runcmd(pcmd->left);
-//     }
-//     if(fork1() == 0){
-//       close(0);
-//       dup(p[0]);
-//       close(p[0]);
-//       close(p[1]);
-//       runcmd(pcmd->right);
-//     }
-//     close(p[0]);
-//     close(p[1]);
-//     wait();
-//     wait();
-//     break;
-
-//   case BACK:
-//     bcmd = (struct backcmd*)cmd;
-//     if(fork1() == 0)
-//       runcmd(bcmd->cmd);
-//     break;
-
-//   case EXIT:
-//     // exitcall = (struct exitcmd*)cmd;
-//     exit(0);
- 
-//   }
-//   exit(0);
-// }
+  free(token);
+  tokens[tokenNo] = 0 ;
+  return tokens;
+}
 
 int
 getcmd(char *buf, int nbuf)
 {
-  printf(2, "myshell> ");
+  printf(2, "MyShell>");
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
-  if(buf[0] == 0) // EOF
+  if(buf[0] == 0)
     return -1;
   return 0;
 }
+
+void utilityFunction(char *buf)
+{
+  char **tokens;
+
+  struct struct_command *token;
+
+  token = malloc(sizeof(*token));
+
+  token->ptrforcommand = buf;
+  tokens = tokenize(buf);
+
+  token->subcommandLength = strlen("&&");
+  token->commandLength = strlen(buf);
+
+  if (contains(token, "&&")->exist == 1)
+  {
+
+    printf(1, "%s %d \n", token->leftPart, strlen(token->leftPart));
+    printf(1, "%s %d \n", token->rightPart, strlen(token->rightPart));
+
+    printf(1, "\n");
+    printf(1, "contains &&\n");
+  }
+  else if (contains(token, "||")->exist == 1)
+  {
+
+    printf(1, "%s %d \n", token->leftPart, strlen(token->leftPart));
+    printf(1, "%s %d \n", token->rightPart, strlen(token->rightPart));
+
+    printf(1, "\n");
+    printf(1, "contains ||\n");
+  }
+  else if (contains(token, ";")->exist == 1)
+  {
+
+    printf(1, "%s %d \n", token->leftPart, strlen(token->leftPart));
+    printf(1, "%s %d \n", token->rightPart, strlen(token->rightPart));
+
+    printf(1, "\n");
+    printf(1, "contains ;\n");
+  }
+  else if (contains(token, "|")->exist == 1)
+  {
+    printf(1, "%s %d \n", token->leftPart, strlen(token->leftPart));
+    printf(1, "%s %d \n", token->rightPart, strlen(token->rightPart));
+
+    printf(1, "\n");
+    printf(1, "contains |\n");
+  }
+  else
+  {
+    // its time to directly execute command by calling exec method
+    printf(1, "call execute\n");
+    exec(tokens[0], tokens);
+  }
+}
+
+
 
 int
 main(void)
@@ -230,57 +235,7 @@ main(void)
 
 
     if(fork() == 0){
-      struct struct_command *token ;
-
-      token = malloc(sizeof(*token));
-
-      token->ptrforcommand = buf;
-      
-      // pattern will be passed as parameter
-      // token->ptrforcheckpattern = "&&";
-
-      token ->subcommandLength =  strlen("&&");
-      token->commandLength = strlen(buf);
-      
-
-      if(contains(token , "&&")->exist == 1){
-
-          printf(1,"%s %d \n",token->leftPart, strlen(token->leftPart));
-          printf(1,"%s %d \n",token->rightPart, strlen(token->rightPart));
-
-          printf(1,"\n");
-          printf(1,"contains &&\n");
-
-      }else if(contains(token , "||")->exist == 1){
-
-        printf(1,"%s %d \n",token->leftPart, strlen(token->leftPart));
-          printf(1,"%s %d \n",token->rightPart, strlen(token->rightPart));
-
-          printf(1,"\n");
-          printf(1,"contains &&\n");
-
-    }else if(contains(token , ";")->exist == 1){
-
-       printf(1,"%s %d \n",token->leftPart, strlen(token->leftPart));
-          printf(1,"%s %d \n",token->rightPart, strlen(token->rightPart));
-
-          printf(1,"\n");
-          printf(1,"contains &&\n");
-
-    }else if(contains(token , "|")->exist == 1){
-
-       printf(1,"%s %d \n",token->leftPart, strlen(token->leftPart));
-          printf(1,"%s %d \n",token->rightPart, strlen(token->rightPart));
-
-          printf(1,"\n");
-          printf(1,"contains &&\n");
-
-    }else{
-        // its time to directly execute command by calling exec method
-        printf(1,"call ececute\n");
-
-    }
-     
+      utilityFunction(buf);     
     }
     wait(0);
 
