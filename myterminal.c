@@ -100,7 +100,6 @@ int isPresent(int operator)
           {
             lastIdx = i;
             return 1;
-            break;
           }
         }
         index++;
@@ -120,28 +119,8 @@ int isPresent(int operator)
           {
             lastIdx = i;
             return 1;
-            break;
           }
         }
-        index++;
-      }
-    }
-  }
-  else if (operator== 3)
-  {
-    for (int i = 0; i < size; i++)
-    {
-      int index = 0;
-      for (; cmd_array[i][index];)
-      {
-
-        if (cmd_array[i][index] == '|')
-        {
-          lastIdx = i;
-          return 1;
-          break;
-        }
-
         index++;
       }
     }
@@ -154,13 +133,29 @@ int isPresent(int operator)
       for (; cmd_array[i][index];)
       {
 
+        if (cmd_array[i][index] == '|')
+        {
+          lastIdx = i;
+          return 1;
+        }
+
+        index++;
+      }
+    }
+  }
+  else if (operator== 3)
+  {
+    for (int i = 0; i < size; i++)
+    {
+      int index = 0;
+      for (; cmd_array[i][index];)
+      {
+
         if (cmd_array[i][index] == ';')
         {
           lastIdx = i;
           return 1;
-          break;
         }
-
         index++;
       }
     }
@@ -177,18 +172,26 @@ int contains(char *buff)
   lastIdx = 0;
   if (isPresent(1) == 1)
   { //AND
+    // printf(1, "Found &&\n");
+
     return 1;
   }
   else if (isPresent(2) == 1)
   { //OR
+    // printf(1, "Found ||\n");
+
     return 2;
   }
   else if (isPresent(3) == 1)
   { //SEMI-COLON
+    // printf(1, "Found ;\n");
+
     return 3;
   }
   else if (isPresent(4) == 1)
   { //PIPE
+    // printf(1, "Found |\n");
+
     return 4;
   } //NORMAL
   return operator;
@@ -264,7 +267,7 @@ void utilityFunction(char *buf)
   switch (operator)
   {
   default:
-    printf(1, "Default\n");
+    printf(1, "Illegal Command or Argument\n");
     break;
   case 1: //AND
     cid1 = fork();
@@ -275,9 +278,8 @@ void utilityFunction(char *buf)
     status = -1;
     while (cid1 != wait(&status))
       ;
-    if (status != 0)
+    if (status == -1)
     {
-      printf(1, "failed\n");
       return;
     }
 
@@ -297,9 +299,8 @@ void utilityFunction(char *buf)
 
     status = 0;
     wait(&status);
-    if (status != -1) //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+    if (status == 0)
     {
-      printf(1, "failed\n");
       return;
     }
 
@@ -311,16 +312,24 @@ void utilityFunction(char *buf)
     wait(0);
     return;
   case 3: //SEMI-COLON
-
-    printf(1, "Default\n");
+    cid1 = fork();
+    if (cid1== 0) {
+      exec(leftCmnd[0], leftCmnd);
+    }
+    cid2 = fork();
+    if (cid2 == 0) {
+      exec(rightCmnd[0], rightCmnd);
+    }
+    wait(0);
+    wait(0);
     return;
   case 4: //PIPE
     if (pipe(fileDesc) < 0)
     {
-      printf(1, "failed\n");
       return;
     }
-    if (fork() == 0)
+    cid1 = fork();
+    if (cid1 == 0)
     {
       close(1);
       dup(fileDesc[1]);
@@ -328,7 +337,8 @@ void utilityFunction(char *buf)
       close(fileDesc[1]);
       exec(leftCmnd[0], leftCmnd);
     }
-    if (fork() == 0)
+    cid2 = fork();
+    if (cid2 == 0)
     {
       close(0);
       dup(fileDesc[0]);
