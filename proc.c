@@ -734,7 +734,7 @@ int getprocesstimedetails1(int pid)
   //so return -1;
   if (nullcheck(p->creation, p->lastswitchout, p->lastswitchin))
   {
-    cprintf("Return");
+    cprintf("Error Return");
     return -1;
   }
 
@@ -763,10 +763,11 @@ int procinfo(int pid)
   if (p->state == UNUSED)
   {
     cprintf("Illegal command or argument\n");
-    return -1;
+    exit(-1);
   }
   cprintf("Number of files opened : %d\n", numOpenFiles1(pid));
   cprintf("Memory allocated : %d\n", memAlloc1(pid));
   getprocesstimedetails1(pid);
-  return 1;
+  exit(0);
+  return 0;
 }

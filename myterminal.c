@@ -4,8 +4,8 @@
 #include "user.h"
 #include "fcntl.h"
 // #include "string.h"
-char *commands[20];
-int leftIdx;
+char *cmd_array[20];
+int lastIdx;
 int size;
 struct cmnds
 {
@@ -57,7 +57,7 @@ void checkIfExit(char *command)
     exit(0);
 }
 
-void separateCommands(char *buff)
+void separatecmd_array(char *buff)
 {
   size = 0;
   char *ptr;
@@ -69,7 +69,7 @@ void separateCommands(char *buff)
     if (started == 0)
     {
       started = 1;
-      commands[idx++] = ptr;
+      cmd_array[idx++] = ptr;
     }
 
     if (buff[i] == ' ')
@@ -85,48 +85,112 @@ void separateCommands(char *buff)
   size = idx;
 }
 
-int contains(char *buff)
+int isPresent(int operator)
 {
-  memset(commands, 0, sizeof(commands));
-  separateCommands(buff);
-  checkIfExit(commands[0]);
-  int operator= - 1;
-  leftIdx = 0;
-  for (int i = 0; i < size; i++)
+  if (operator== 1)
   {
-    int index = 0;
-    for (; commands[i][index];)
+    for (int i = 0; i < size; i++)
     {
-      if (commands[i][index + 1])
+      int index = 0;
+      for (; cmd_array[i][index];)
       {
-        if (commands[i][index] == '&' && commands[i][index + 1] == '&')
+        if (cmd_array[i][index + 1])
         {
-          leftIdx = i;
-          operator= 1;
-          break;
+          if (cmd_array[i][index] == '&' && cmd_array[i][index + 1] == '&')
+          {
+            lastIdx = i;
+            return 1;
+            break;
+          }
         }
-        if (commands[i][index] == '|' && commands[i][index + 1] == '|')
-        {
-          leftIdx = i;
-          operator= 2;
-          break;
-        }
+        index++;
       }
-      if (commands[i][index] == '|')
-      {
-        leftIdx = i;
-        operator= 3;
-        break;
-      }
-      if (commands[i][index] == ';')
-      {
-        leftIdx = i;
-        operator= 4;
-        break;
-      }
-      index++;
     }
   }
+  else if (operator== 2)
+  {
+    for (int i = 0; i < size; i++)
+    {
+      int index = 0;
+      for (; cmd_array[i][index];)
+      {
+        if (cmd_array[i][index + 1])
+        {
+          if (cmd_array[i][index] == '|' && cmd_array[i][index + 1] == '|')
+          {
+            lastIdx = i;
+            return 1;
+            break;
+          }
+        }
+        index++;
+      }
+    }
+  }
+  else if (operator== 3)
+  {
+    for (int i = 0; i < size; i++)
+    {
+      int index = 0;
+      for (; cmd_array[i][index];)
+      {
+
+        if (cmd_array[i][index] == '|')
+        {
+          lastIdx = i;
+          return 1;
+          break;
+        }
+
+        index++;
+      }
+    }
+  }
+  else if (operator== 4)
+  {
+    for (int i = 0; i < size; i++)
+    {
+      int index = 0;
+      for (; cmd_array[i][index];)
+      {
+
+        if (cmd_array[i][index] == ';')
+        {
+          lastIdx = i;
+          return 1;
+          break;
+        }
+
+        index++;
+      }
+    }
+  }
+  return 0;
+}
+
+int contains(char *buff)
+{
+  memset(cmd_array, 0, sizeof(cmd_array));
+  separatecmd_array(buff);
+  checkIfExit(cmd_array[0]);
+  int operator= - 1;
+  lastIdx = 0;
+  if (isPresent(1) == 1)
+  { //AND
+    return 1;
+  }
+  else if (isPresent(2) == 1)
+  { //OR
+    return 2;
+  }
+  else if (isPresent(3) == 1)
+  { //SEMI-COLON
+    return 3;
+  }
+  else if (isPresent(4) == 1)
+  { //PIPE
+    return 4;
+  } //NORMAL
   return operator;
 }
 
@@ -187,14 +251,14 @@ void utilityFunction(char *buf)
   memset(leftCmnd, 0, sizeof(leftCmnd));
   char *rightCmnd[10];
   memset(rightCmnd, 0, sizeof(rightCmnd));
-  for (int i = 0; i < leftIdx; i++)
+  for (int i = 0; i < lastIdx; i++)
   {
-    leftCmnd[i] = commands[i];
+    leftCmnd[i] = cmd_array[i];
   }
   int idx = 0;
-  for (int i = leftIdx + 1; i < size; i++)
+  for (int i = lastIdx + 1; i < size; i++)
   {
-    rightCmnd[idx++] = commands[i];
+    rightCmnd[idx++] = cmd_array[i];
   }
   int status;
   switch (operator)
@@ -246,13 +310,17 @@ void utilityFunction(char *buf)
     }
     wait(0);
     return;
-  case 3: //PIPE
+  case 3: //SEMI-COLON
+
+    printf(1, "Default\n");
+    return;
+  case 4: //PIPE
     if (pipe(fileDesc) < 0)
     {
-      exit(-1);
+      printf(1, "failed\n");
+      return;
     }
-    cid1 = fork();
-    if (cid1 == 0)
+    if (fork() == 0)
     {
       close(1);
       dup(fileDesc[1]);
@@ -260,8 +328,7 @@ void utilityFunction(char *buf)
       close(fileDesc[1]);
       exec(leftCmnd[0], leftCmnd);
     }
-    cid2 = fork();
-    if (cid2 == 0)
+    if (fork() == 0)
     {
       close(0);
       dup(fileDesc[0]);
@@ -274,14 +341,11 @@ void utilityFunction(char *buf)
     wait(0);
     wait(0);
     return;
-  case 4: //PARALLEL EXEC
-    printf(1, "Default\n");
-    break;
   case -1: //NORMAL EXEC
-    if (commands[0] == 0)
+    if (cmd_array[0] == 0)
       exit(-1);
-    exec(commands[0], commands);
-    printf(2, "exec %s failed\n", commands[0]);
+    exec(cmd_array[0], cmd_array);
+    printf(2, "exec %s failed\n", cmd_array[0]);
     return;
   }
   return;
