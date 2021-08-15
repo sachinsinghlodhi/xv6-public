@@ -35,26 +35,12 @@ int len(char *str)
   return n;
 }
 
-void checkIfExit(char *command)
+int checkIfExit(char *command)
 {
-  char *end = "Exit";
-  int kill = 1;
-  char *check = command;
-  for (int i = 0; i < 4; i++)
-  {
-    if (*check != end[i])
-    {
-      kill = 0;
-      break;
-    }
-    check++;
-
-    if (i == 3 && *check != '\0')
-      kill = 0;
-  }
-
-  if (kill == 1)
-    exit(0);
+  char *terminate = "Exit\n";
+  int isEqual = strcmp(command, terminate);
+  // printf(1, "Is equal : %d\n", isEqual);
+  return isEqual;
 }
 
 void separatecmd_array(char *buff)
@@ -167,7 +153,6 @@ int contains(char *buff)
 {
   memset(cmd_array, 0, sizeof(cmd_array));
   separatecmd_array(buff);
-  checkIfExit(cmd_array[0]);
   int operator= - 1;
   lastIdx = 0;
   if (isPresent(1) == 1)
@@ -246,6 +231,7 @@ int contains(char *buff)
 
 void utilityFunction(char *buf)
 {
+  printf(1, "Inside util");
   int operator= contains(buf);
   int cid1;
   int cid2;
@@ -267,7 +253,7 @@ void utilityFunction(char *buf)
   switch (operator)
   {
   default:
-    printf(1, "Illegal Command or Argument\n");
+    printf(1, "Illegal Command or Argument %d \n", operator);
     break;
   case 1: //AND
     cid1 = fork();
@@ -313,11 +299,13 @@ void utilityFunction(char *buf)
     return;
   case 3: //SEMI-COLON
     cid1 = fork();
-    if (cid1== 0) {
+    if (cid1 == 0)
+    {
       exec(leftCmnd[0], leftCmnd);
     }
     cid2 = fork();
-    if (cid2 == 0) {
+    if (cid2 == 0)
+    {
       exec(rightCmnd[0], rightCmnd);
     }
     wait(0);
@@ -373,7 +361,7 @@ int main(void)
       break;
     }
   }
-
+  // int i = 1;
   while (1)
   {
     printf(2, "MyShell>");
@@ -386,10 +374,17 @@ int main(void)
         printf(2, "cannot cd %s\n", buf + 3);
       continue;
     }
+    if (checkIfExit(buf) == 0)
+    {
+      exit(0);
+    }
 
     if (fork() == 0)
     {
+      // printf(1, "Running util : %d\n", i);
       utilityFunction(buf);
+      // printf(1, "Completed util : %d\n", i);
+      // i++;
     }
     wait(0);
   }

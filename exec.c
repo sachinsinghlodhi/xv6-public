@@ -23,7 +23,7 @@ exec(char *path, char **argv)
 
   if((ip = namei(path)) == 0){
     end_op();
-    cprintf("exec: fail\n");
+    cprintf("Illegal Commands or Arguments\n");
     return -1;
   }
   ilock(ip);
