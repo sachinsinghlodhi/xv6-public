@@ -42,7 +42,7 @@ main(int argc, char *argv[])
   char *pattern;
 
   if(argc <= 1){
-    // printf(2, "usage: grep pattern [file ...]\n");
+    printf(2, "Illegal Command or Argument\n");
     exit(-1);
   }
   pattern = argv[1];

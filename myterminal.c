@@ -7,6 +7,7 @@
 char *cmd_array[20];
 int lastIdx;
 int size;
+int pindex;
 struct cmnds
 {
   char *cmndstr;
@@ -37,9 +38,11 @@ int len(char *str)
 
 int checkIfExit(char *command)
 {
-  char *terminate = "Exit\n";
-  int isEqual = strcmp(command, terminate);
+  int isEqual = strcmp(command, "Exit\n");
   // printf(1, "Is equal : %d\n", isEqual);
+  if (isEqual == 0)
+    return isEqual;
+  isEqual = strcmp(command, "Exit \n");
   return isEqual;
 }
 
@@ -77,18 +80,10 @@ int isPresent(int operator)
   {
     for (int i = 0; i < size; i++)
     {
-      int index = 0;
-      for (; cmd_array[i][index];)
+      if (strcmp(cmd_array[i], "&&") == 0)
       {
-        if (cmd_array[i][index + 1])
-        {
-          if (cmd_array[i][index] == '&' && cmd_array[i][index + 1] == '&')
-          {
-            lastIdx = i;
-            return 1;
-          }
-        }
-        index++;
+        lastIdx = i;
+        return 1;
       }
     }
   }
@@ -96,18 +91,10 @@ int isPresent(int operator)
   {
     for (int i = 0; i < size; i++)
     {
-      int index = 0;
-      for (; cmd_array[i][index];)
+      if (strcmp(cmd_array[i], "||") == 0)
       {
-        if (cmd_array[i][index + 1])
-        {
-          if (cmd_array[i][index] == '|' && cmd_array[i][index + 1] == '|')
-          {
-            lastIdx = i;
-            return 1;
-          }
-        }
-        index++;
+        lastIdx = i;
+        return 1;
       }
     }
   }
@@ -115,17 +102,14 @@ int isPresent(int operator)
   {
     for (int i = 0; i < size; i++)
     {
-      int index = 0;
-      for (; cmd_array[i][index];)
-      {
-
-        if (cmd_array[i][index] == '|')
-        {
+      int j = 0;
+      while(cmd_array[i][j]) {
+        if (cmd_array[i][j] == '|') {
           lastIdx = i;
+          pindex = j;
           return 1;
         }
-
-        index++;
+        j++;
       }
     }
   }
@@ -133,19 +117,17 @@ int isPresent(int operator)
   {
     for (int i = 0; i < size; i++)
     {
-      int index = 0;
-      for (; cmd_array[i][index];)
-      {
-
-        if (cmd_array[i][index] == ';')
-        {
+      int j = 0;
+      while(cmd_array[i][j]) {
+        if (cmd_array[i][j] == ';') {
           lastIdx = i;
+          pindex = j;
           return 1;
         }
-        index++;
+        j++;
       }
     }
-  }
+  } 
   return 0;
 }
 
@@ -182,56 +164,8 @@ int contains(char *buff)
   return operator;
 }
 
-// int utilExec(char **token, int cmndno)
-// {
-//   if (cmndno == 0)
-//     exit(-1);
-//   char **token1;
-//   char **token2;
-//   switch (cmndno)
-//   {
-//   default:
-//     printf(1, "Default case is executed \n");
-//   case 4:
-//     int fileDes[2];
-//     if (pipe(fileDes) == -1)
-//     {
-//       printf(1, "Can not create pipe\n");
-//       return -1;
-//     }
-//     int cid1;
-
-//     if ((cid1 = fork()) < 0)
-//     {
-
-//       printf(1, "fork has failed\n");
-//       exit(0);
-//     }
-//     else if (cid1 == 0)
-//     {
-
-//       close(fileDes[1]);
-//       dup(fileDes[0]);
-//       execute_cmnd(token, 6);
-//       close(fileDes[0]);
-//     }
-//     else
-//     {
-
-//       close(fileDes[0]);
-//       dup(fileDes[1]);
-//       execute_cmnd(token, 7);
-//       close(fileDes[1]);
-//       wait(0);
-//     }
-//     break;
-//   }
-//   return 0;
-// }
-
 void utilityFunction(char *buf)
 {
-  printf(1, "Inside util");
   int operator= contains(buf);
   int cid1;
   int cid2;
@@ -240,20 +174,48 @@ void utilityFunction(char *buf)
   memset(leftCmnd, 0, sizeof(leftCmnd));
   char *rightCmnd[10];
   memset(rightCmnd, 0, sizeof(rightCmnd));
-  for (int i = 0; i < lastIdx; i++)
+  if (operator== 1 || operator== 2)
   {
-    leftCmnd[i] = cmd_array[i];
+    for (int i = 0; i < lastIdx; i++)
+    {
+      leftCmnd[i] = cmd_array[i];
+    }
+    int idx = 0;
+    for (int i = lastIdx + 1; i < size; i++)
+    {
+      rightCmnd[idx++] = cmd_array[i];
+    }
   }
-  int idx = 0;
-  for (int i = lastIdx + 1; i < size; i++)
+  else
   {
-    rightCmnd[idx++] = cmd_array[i];
+    for (int i = 0; i < lastIdx; i++)
+    {
+      leftCmnd[i] = cmd_array[i];
+    }
+    leftCmnd[lastIdx] = (char *)malloc(sizeof(char) * 200);
+    int j = 0;
+    for (j = 0; j < pindex; j++) {
+      leftCmnd[lastIdx][j] = cmd_array[lastIdx][j];
+    }
+    leftCmnd[lastIdx][j] = '\0';
+    int jj = 0;
+    rightCmnd[0] = (char *)malloc(sizeof(char) * 200);
+
+    for (int j = pindex + 1; cmd_array[lastIdx][j]; j++) {
+      rightCmnd[0][jj++] = cmd_array[lastIdx][j];
+    }
+    rightCmnd[0][jj] = '\0';
+    int idx = 1;
+    for (int i = lastIdx + 1; i < size; i++)
+    {
+      rightCmnd[idx++] = cmd_array[i];
+    }
   }
   int status;
   switch (operator)
   {
   default:
-    printf(1, "Illegal Command or Argument %d \n", operator);
+    printf(1, "Illegal Command or Argument\n");
     break;
   case 1: //AND
     cid1 = fork();
@@ -266,7 +228,9 @@ void utilityFunction(char *buf)
       ;
     if (status == -1)
     {
-      return;
+      // free(leftCmnd);
+      // free(rightCmnd);
+      break;
     }
 
     cid2 = fork();
@@ -275,7 +239,7 @@ void utilityFunction(char *buf)
       exec(rightCmnd[0], rightCmnd);
     }
     wait(0);
-    return;
+    break;
   case 2: //OR
     cid1 = fork();
     if (cid1 == 0)
@@ -287,7 +251,7 @@ void utilityFunction(char *buf)
     wait(&status);
     if (status == 0)
     {
-      return;
+      break;
     }
 
     cid2 = fork();
@@ -296,8 +260,9 @@ void utilityFunction(char *buf)
       exec(rightCmnd[0], rightCmnd);
     }
     wait(0);
-    return;
+    break;
   case 3: //SEMI-COLON
+    // printf(1, "Found ;\n");
     cid1 = fork();
     if (cid1 == 0)
     {
@@ -310,11 +275,14 @@ void utilityFunction(char *buf)
     }
     wait(0);
     wait(0);
-    return;
+    break;
   case 4: //PIPE
+    // printf(1, "Found |\n");
     if (pipe(fileDesc) < 0)
     {
-      return;
+      // free(leftCmnd);
+      // free(rightCmnd);
+      break;
     }
     cid1 = fork();
     if (cid1 == 0)
@@ -338,14 +306,16 @@ void utilityFunction(char *buf)
     close(fileDesc[1]);
     wait(0);
     wait(0);
-    return;
+    break;
   case -1: //NORMAL EXEC
     if (cmd_array[0] == 0)
       exit(-1);
-    exec(cmd_array[0], cmd_array);
-    printf(2, "exec %s failed\n", cmd_array[0]);
-    return;
+    // exec(cmd_array[0], cmd_array);
+    printf(2, "Illegal Command or Argument\n");
+    break;
   }
+  free(rightCmnd);
+  free(leftCmnd);
   return;
 }
 
@@ -367,22 +337,19 @@ int main(void)
     printf(2, "MyShell>");
     memset(buf, 0, sizeof(buf));
     gets(buf, sizeof(buf));
-    if (buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' ')
-    {
-      buf[strlen(buf) - 1] = 0; // chop \n
-      if (chdir(buf + 3) < 0)
-        printf(2, "cannot cd %s\n", buf + 3);
-      continue;
-    }
     if (checkIfExit(buf) == 0)
     {
+      free(cmd_array);
+      free(buf);
       exit(0);
     }
-
+    //int i = 1;
     if (fork() == 0)
     {
       // printf(1, "Running util : %d\n", i);
       utilityFunction(buf);
+      free(cmd_array);
+      exit(0);
       // printf(1, "Completed util : %d\n", i);
       // i++;
     }
