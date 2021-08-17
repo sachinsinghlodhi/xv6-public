@@ -4,17 +4,11 @@
 #include "user.h"
 #include "fcntl.h"
 // #include "string.h"
-char *cmd_array[20];
-int size;
-int pindex;
+
+int present;
 struct cmnds
 {
-  char *cmndstr;
-  char *left;
-  int hasOp;
-  char *right;
-  int cmndlen;
-  int subcmndlen;
+  char comm[40];
 };
 
 int stringcpy(char *s, const char *t, int n)
@@ -45,9 +39,9 @@ int checkIfExit(char *command)
   return isEqual;
 }
 
-void separatecmd_array(char *buff)
+void separatecmd_array(char *buff, char **cmd_array, int *size)
 {
-  size = 0;
+  *size = 0;
   char *ptr;
   int started = 0;
   int idx = 0;
@@ -70,10 +64,10 @@ void separatecmd_array(char *buff)
       *(ptr++) = '\0';
     }
   }
-  size = idx;
+  *size = idx;
 }
 
-int isPresent(int operator, int * lastIdx)
+int isPresent(int operator, char ** cmd_array, int *lastIdx, int size, int *pindex, int *input, int *output, int *present)
 {
   if (operator== 1)
   {
@@ -82,6 +76,7 @@ int isPresent(int operator, int * lastIdx)
       if (strcmp(cmd_array[i], "&&") == 0)
       {
         *lastIdx = i;
+        *present = 1;
         return 1;
       }
     }
@@ -93,6 +88,7 @@ int isPresent(int operator, int * lastIdx)
       if (strcmp(cmd_array[i], "||") == 0)
       {
         *lastIdx = i;
+        *present = 1;
         return 1;
       }
     }
@@ -107,7 +103,8 @@ int isPresent(int operator, int * lastIdx)
         if (cmd_array[i][j] == '|')
         {
           *lastIdx = i;
-          pindex = j;
+          *present = 1;
+          *pindex = j;
           return 1;
         }
         j++;
@@ -124,14 +121,55 @@ int isPresent(int operator, int * lastIdx)
         if (cmd_array[i][j] == ';')
         {
           *lastIdx = i;
-          pindex = j;
+          *present = 1;
+          *pindex = j;
           return 1;
         }
         j++;
       }
     }
   }
-  else if (operator== 5) //<<<<<<<
+  else if (operator== 7)
+  {
+    int lessflag = 0;
+    int greatflag = 0;
+    for (int i = 0; i < size; i++)
+    {
+      int j = 0;
+      while (cmd_array[i][j])
+      {
+        if (cmd_array[i][j] == '<')
+        {
+          *lastIdx = i;
+          *present = 1;
+          *pindex = j;
+          *input = i;
+          lessflag = 1;
+        }
+        j++;
+      }
+    }
+
+    for (int i = 0; i < size; i++)
+    {
+      int j = 0;
+      while (cmd_array[i][j])
+      {
+        if (cmd_array[i][j] == '>')
+        {
+          *lastIdx = i;
+          *present = 1;
+          *output = i;
+          *pindex = j;
+          greatflag = 1;
+        }
+        j++;
+      }
+    }
+    if (lessflag && greatflag)
+      return 1;
+  }
+  else if (operator== 5)
   {
     for (int i = 0; i < size; i++)
     {
@@ -141,14 +179,17 @@ int isPresent(int operator, int * lastIdx)
         if (cmd_array[i][j] == '<')
         {
           *lastIdx = i;
-          pindex = j;
+          *present = 1;
+          *pindex = j;
+          *input = i;
+          // lessflag = 1;
           return 1;
         }
         j++;
       }
     }
   }
-  else if (operator== 6) //>>>>>>
+  else if (operator== 6)
   {
     for (int i = 0; i < size; i++)
     {
@@ -158,7 +199,10 @@ int isPresent(int operator, int * lastIdx)
         if (cmd_array[i][j] == '>')
         {
           *lastIdx = i;
-          pindex = j;
+          *present = 1;
+          *output = i;
+          *pindex = j;
+          // greatflag = 1;
           return 1;
         }
         j++;
@@ -168,58 +212,111 @@ int isPresent(int operator, int * lastIdx)
   return 0;
 }
 
-int contains(char *buff, int *lastIdx)
+int contains(char *buff, char **cmd_array, int *lastIdx, int *size, int *pindex, int *input, int *output, int *present)
 {
-  memset(cmd_array, 0, sizeof(cmd_array));
-  separatecmd_array(buff);
+  *lastIdx = 0;
   int operator= - 1;
-  if (isPresent(1, lastIdx) == 1)
+  if (isPresent(1, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
   { //AND
     // printf(1, "Found &&\n");
 
     return 1;
   }
-  else if (isPresent(2, lastIdx) == 1)
+  else if (isPresent(2, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
   { //OR
     // printf(1, "Found ||\n");
 
     return 2;
   }
-  else if (isPresent(3, lastIdx) == 1)
+  else if (isPresent(3, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
   { //SEMI-COLON
     // printf(1, "Found ;\n");
 
     return 3;
   }
-  else if (isPresent(4, lastIdx) == 1)
+  else if (isPresent(4, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
   { //PIPE
     // printf(1, "Found |\n");
 
     return 4;
   }
-  else if (isPresent(5, lastIdx) == 1)
-  { //
-    return 5;
-  }
-  else if (isPresent(6, lastIdx) == 1)
+  // else if (isPresent(7, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
+  // {
+  //   //NORMAL
+  //   return 7;
+  // }
+  else if (isPresent(6, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
   {
-    return 6; //
+    //NORMAL
+    return 6;
+  }
+  else if (isPresent(5, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
+  {
+    //NORMAL
+    return 5;
   }
   return operator;
 }
 
+void stringjoin(char **temp, char *res)
+{
+  int idx = 0;
+  int i = 0;
+  while (temp[i])
+  {
+    int j = 0;
+    while (temp[i][j])
+    {
+      res[idx++] = temp[i][j];
+      j++;
+    }
+    i++;
+    if (temp[i])
+    {
+      res[idx++] = ' ';
+    }
+  }
+  printf(1, "Inside join \n%s\n", res);
+}
+
 void utilityFunction(char *buf)
 {
-  int lastIdx = 0;
-  int operator= contains(buf, &lastIdx);
+  // printf(1, "Receiving -------%s %d\n", buf, strlen(buf));
+  char *cmd_array[20];
+  int lastIdx;
+  int size;
+  int pindex;
+  int input = -1;
+  int output = -1;
+  char *temp[10];
+  char *temp1[10];
+  char *temp2[10];
+  int present = -1;
+  int fd1 = 0, fd2 = 0;
+  memset(cmd_array, 0, sizeof(cmd_array));
+  separatecmd_array(buf, cmd_array, &size);
+  // char temp[200];
+
+  int operator= contains(buf, cmd_array, &lastIdx, &size, &pindex, &input, &output, &present);
+  // if (present == -1) {
+  //   exec(cmd_array[0], cmd_array);
+  // }
   int cid1;
+  int pid1;
+  // int pid2;
   int cid2;
+  int flag1 = 0;
+  int flag2 = 0;
   int fileDesc[2];
   char *leftCmnd[10];
   memset(leftCmnd, 0, sizeof(leftCmnd));
+  // memset(temp, 0, sizeof(temp));
+  memset(temp, 0, sizeof(temp));
+  memset(temp1, 0, sizeof(temp1));
+  memset(temp2, 0, sizeof(temp2));
   char *rightCmnd[10];
   memset(rightCmnd, 0, sizeof(rightCmnd));
-  if (operator== 1 || operator== 2 || operator== 5 || operator== 6)
+  if (operator== 1 || operator== 2 || operator== 5 || operator== - 1 || operator== 6)
   {
     for (int i = 0; i < lastIdx; i++)
     {
@@ -271,17 +368,53 @@ void utilityFunction(char *buf)
     }
   }
   int status;
+  // printf(1, "%d\n\n\n", operator);
+  // int i = 0;
+  // while (leftCmnd[i])
+  // {
+  //   // printf(1, "%s %d\n", leftCmnd[i], strlen(leftCmnd[i]));
+  //   printf(1, "%s %s\n", leftCmnd[i], buff);
+
+  //   i++;
+  // }
+  // i = 0;
+  // printf(1, "Separated by");
+  // while (rightCmnd[i])
+  // {
+  //   printf(1, "%s %d\n", rightCmnd[i], strlen(rightCmnd[i]));
+  //   i++;
+  // }
+  if (strcmp("executeCommands", cmd_array[0]) == 0) {
+    fd1 = open(cmd_array[1], O_CREATE | O_RDWR);
+    memset(temp, 0, sizeof(temp));
+    char ch;
+    char *ptr = (char *)malloc(200);
+    memset(ptr, 0, sizeof(ptr));
+    char *head = ptr;
+    while(read(fd1,&ch,1) == 1) {
+      *head = ch;
+      head++;
+      if (ch == '\n') {
+        cid1 = fork();
+        if (cid1 == 0) {
+          utilityFunction(ptr);
+        }
+        wait(0);
+        memset(ptr, 0, sizeof(ptr));
+        head = ptr;
+      }
+    }
+    exit(0);
+  }
   switch (operator)
   {
-  default: //NORMAL EXEC
+  default:
+    printf(1, "Running from up\n");
     if (cmd_array[0] == 0)
       exit(-1);
-    //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     if (operator== 5)
     { //<<<<<<
       // printf(1, "Less\n");
-
       cid1 = fork();
       if (cid1 == 0)
       {
@@ -325,7 +458,86 @@ void utilityFunction(char *buf)
     cid1 = fork();
     if (cid1 == 0)
     {
-      exec(leftCmnd[0], leftCmnd);
+      if (leftCmnd[0] == 0) {
+        printf(2, "Illegal Command or Argument\n");
+        return;
+      }
+      // int iidx = 0;
+      // int ii = 0;
+      // while (leftCmnd[ii])
+      // {
+      //   int jj = 0;
+      //   while (leftCmnd[ii][jj])
+      //   {
+      //     temp1[iidx++] = leftCmnd[ii][jj];
+      //     jj++;
+      //   }
+      //   ii++;
+      //   if (leftCmnd[ii])
+      //   {
+      //     temp1[iidx++] = ' ';
+      //   }
+      // }
+
+      int op = isPresent(5, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      { //<<<<<<
+        printf(1, "Less\n");
+        for (int i = 0; i < input; i++)
+        {
+          temp1[i] = leftCmnd[i];
+        }
+        int ee = 0;
+        for (int i = input + 1; i < size; i++)
+        {
+          temp2[ee++] = leftCmnd[i];
+        }
+        pid1 = fork();
+        if (pid1 == 0)
+        {
+          close(0);
+          fileDesc[0] = open(temp2[0], O_CREATE | O_RDWR);
+          // printf(1, "%d fd\n", fileDesc[0]);
+          dup(fileDesc[0]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      op = isPresent(6, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      {
+        printf(1, "Greater\n");
+        for (int i = 0; i < output; i++)
+        {
+          temp1[i] = leftCmnd[i];
+        }
+        int ee = 0;
+        for (int i = output + 1; i < size; i++)
+        {
+          temp2[ee++] = leftCmnd[i];
+        }
+        cid1 = fork();
+        if (cid1 == 0)
+        {
+          // printf(1, "Fork");
+          fileDesc[1] = open(temp2[0], O_CREATE | O_RDWR);
+          close(1);
+          // printf(1, "%d fd\n", fileDesc[1]);
+          dup(fileDesc[1]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      else
+      {
+        exec(leftCmnd[0], leftCmnd);
+        printf(2, "Illegal Command or Argument\n");
+      }
+      // printf(1, "Giving -------%s %d\n", temp1, strlen(temp1));
+      // utilityFunction(temp1);
+      // exec(leftCmnd[0], leftCmnd);
     }
     status = -1;
     while (cid1 != wait(&status))
@@ -340,7 +552,64 @@ void utilityFunction(char *buf)
     cid2 = fork();
     if (cid2 == 0)
     {
-      exec(rightCmnd[0], rightCmnd);
+      int op = isPresent(5, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      { //<<<<<<
+        // printf(1, "Less\n");
+        for (int i = 0; i < input; i++)
+        {
+          temp1[i] = rightCmnd[i];
+        }
+        int ee = 0;
+        for (int i = input + 1; i < size; i++)
+        {
+          temp2[ee++] = rightCmnd[i];
+        }
+        pid1 = fork();
+        if (pid1 == 0)
+        {
+          close(0);
+          fileDesc[0] = open(temp2[0], O_CREATE | O_RDWR);
+          // printf(1, "%d fd\n", fileDesc[0]);
+          dup(fileDesc[0]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      op = isPresent(6, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      {
+        // printf(1, "Greater\n");
+        for (int i = 0; i < output; i++)
+        {
+          temp1[i] = rightCmnd[i];
+        }
+        int ee = 0;
+        for (int i = output + 1; i < size; i++)
+        {
+          temp2[ee++] = rightCmnd[i];
+        }
+        cid1 = fork();
+        if (cid1 == 0)
+        {
+          // printf(1, "Fork");
+          fileDesc[1] = open(temp2[0], O_CREATE | O_RDWR);
+          close(1);
+          // printf(1, "%d fd\n", fileDesc[1]);
+          dup(fileDesc[1]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      else
+      {
+        exec(rightCmnd[0], rightCmnd);
+        printf(2, "Illegal Command or Argument\n");
+      }
+      // stringjoin(rightCmnd, temp2);
+      // exec(rightCmnd[0], rightCmnd);
     }
     wait(0);
     break;
@@ -348,7 +617,64 @@ void utilityFunction(char *buf)
     cid1 = fork();
     if (cid1 == 0)
     {
-      exec(leftCmnd[0], leftCmnd);
+      int op = isPresent(5, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      { //<<<<<<
+        printf(1, "Less\n");
+        for (int i = 0; i < input; i++)
+        {
+          temp1[i] = leftCmnd[i];
+        }
+        int ee = 0;
+        for (int i = input + 1; i < size; i++)
+        {
+          temp2[ee++] = leftCmnd[i];
+        }
+        pid1 = fork();
+        if (pid1 == 0)
+        {
+          close(0);
+          fileDesc[0] = open(temp2[0], O_CREATE | O_RDWR);
+          // printf(1, "%d fd\n", fileDesc[0]);
+          dup(fileDesc[0]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      op = isPresent(6, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      {
+        printf(1, "Greater\n");
+        for (int i = 0; i < output; i++)
+        {
+          temp1[i] = leftCmnd[i];
+        }
+        int ee = 0;
+        for (int i = output + 1; i < size; i++)
+        {
+          temp2[ee++] = leftCmnd[i];
+        }
+        cid1 = fork();
+        if (cid1 == 0)
+        {
+          // printf(1, "Fork");
+          fileDesc[1] = open(temp2[0], O_CREATE | O_RDWR);
+          close(1);
+          // printf(1, "%d fd\n", fileDesc[1]);
+          dup(fileDesc[1]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      else
+      {
+        exec(leftCmnd[0], leftCmnd);
+        printf(2, "Illegal Command or Argument\n");
+      }
+      // stringjoin(leftCmnd, temp1);
+      // exec(leftCmnd[0], leftCmnd);
     }
 
     status = 0;
@@ -361,7 +687,64 @@ void utilityFunction(char *buf)
     cid2 = fork();
     if (cid2 == 0)
     {
-      exec(rightCmnd[0], rightCmnd);
+      int op = isPresent(5, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      { //<<<<<<
+        // printf(1, "Less\n");
+        for (int i = 0; i < input; i++)
+        {
+          temp1[i] = rightCmnd[i];
+        }
+        int ee = 0;
+        for (int i = input + 1; i < size; i++)
+        {
+          temp2[ee++] = rightCmnd[i];
+        }
+        pid1 = fork();
+        if (pid1 == 0)
+        {
+          close(0);
+          fileDesc[0] = open(temp2[0], O_CREATE | O_RDWR);
+          // printf(1, "%d fd\n", fileDesc[0]);
+          dup(fileDesc[0]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      op = isPresent(6, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      {
+        // printf(1, "Greater\n");
+        for (int i = 0; i < output; i++)
+        {
+          temp1[i] = rightCmnd[i];
+        }
+        int ee = 0;
+        for (int i = output + 1; i < size; i++)
+        {
+          temp2[ee++] = rightCmnd[i];
+        }
+        cid1 = fork();
+        if (cid1 == 0)
+        {
+          // printf(1, "Fork");
+          fileDesc[1] = open(temp2[0], O_CREATE | O_RDWR);
+          close(1);
+          // printf(1, "%d fd\n", fileDesc[1]);
+          dup(fileDesc[1]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      else
+      {
+        exec(rightCmnd[0], rightCmnd);
+        printf(2, "Illegal Command or Argument\n");
+      }
+      // stringjoin(rightCmnd, temp2);
+      // exec(rightCmnd[0], rightCmnd);
     }
     wait(0);
     break;
@@ -370,40 +753,252 @@ void utilityFunction(char *buf)
     cid1 = fork();
     if (cid1 == 0)
     {
-      exec(leftCmnd[0], leftCmnd);
+      int op = isPresent(5, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      { //<<<<<<
+        printf(1, "Less\n");
+        for (int i = 0; i < input; i++)
+        {
+          temp1[i] = leftCmnd[i];
+        }
+        int ee = 0;
+        for (int i = input + 1; i < size; i++)
+        {
+          temp2[ee++] = leftCmnd[i];
+        }
+        pid1 = fork();
+        if (pid1 == 0)
+        {
+          close(0);
+          fileDesc[0] = open(temp2[0], O_CREATE | O_RDWR);
+          // printf(1, "%d fd\n", fileDesc[0]);
+          dup(fileDesc[0]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      op = isPresent(6, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      {
+        printf(1, "Greater\n");
+        for (int i = 0; i < output; i++)
+        {
+          temp1[i] = leftCmnd[i];
+        }
+        int ee = 0;
+        for (int i = output + 1; i < size; i++)
+        {
+          temp2[ee++] = leftCmnd[i];
+        }
+        cid1 = fork();
+        if (cid1 == 0)
+        {
+          // printf(1, "Fork");
+          fileDesc[1] = open(temp2[0], O_CREATE | O_RDWR);
+          close(1);
+          // printf(1, "%d fd\n", fileDesc[1]);
+          dup(fileDesc[1]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      else
+      {
+        exec(leftCmnd[0], leftCmnd);
+        printf(2, "Illegal Command or Argument\n");
+      }
+      // stringjoin(leftCmnd, temp1);
+      // exec(leftCmnd[0], leftCmnd);
     }
     cid2 = fork();
     if (cid2 == 0)
     {
-      exec(rightCmnd[0], rightCmnd);
+      int op = isPresent(5, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      { //<<<<<<
+        // printf(1, "Less\n");
+        for (int i = 0; i < input; i++)
+        {
+          temp1[i] = rightCmnd[i];
+        }
+        int ee = 0;
+        for (int i = input + 1; i < size; i++)
+        {
+          temp2[ee++] = rightCmnd[i];
+        }
+        pid1 = fork();
+        if (pid1 == 0)
+        {
+          close(0);
+          fileDesc[0] = open(temp2[0], O_CREATE | O_RDWR);
+          // printf(1, "%d fd\n", fileDesc[0]);
+          dup(fileDesc[0]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      op = isPresent(6, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      {
+        // printf(1, "Greater\n");
+        for (int i = 0; i < output; i++)
+        {
+          temp1[i] = rightCmnd[i];
+        }
+        int ee = 0;
+        for (int i = output + 1; i < size; i++)
+        {
+          temp2[ee++] = rightCmnd[i];
+        }
+        cid1 = fork();
+        if (cid1 == 0)
+        {
+          // printf(1, "Fork");
+          fileDesc[1] = open(temp2[0], O_CREATE | O_RDWR);
+          close(1);
+          // printf(1, "%d fd\n", fileDesc[1]);
+          dup(fileDesc[1]);
+          exec(temp1[0], temp1);
+        }
+        wait(0);
+        break;
+      }
+      else
+      {
+        exec(rightCmnd[0], rightCmnd);
+        printf(2, "Illegal Command or Argument\n");
+      }
+      // stringjoin(rightCmnd, temp2);
+      // exec(rightCmnd[0], rightCmnd);
     }
     wait(0);
     wait(0);
     break;
   case 4: //PIPE
     // printf(1, "Found |\n");
+    flag1 = 0;
+    flag2 = 0;
     if (pipe(fileDesc) < 0)
     {
       // free(leftCmnd);
       // free(rightCmnd);
       break;
     }
+
     cid1 = fork();
     if (cid1 == 0)
     {
+      memset(temp1, 0, sizeof(temp1));
+      memset(temp2, 0, sizeof(temp2));
+      int op = isPresent(5, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      { //<<<<<<
+        flag1 = 1;
+        printf(1, "Less\n");
+        for (int i = 0; i < input; i++)
+        {
+          temp1[i] = leftCmnd[i];
+        }
+        int ee = 0;
+        for (int i = input + 1; i < size; i++)
+        {
+          temp2[ee++] = leftCmnd[i];
+        }
+        close(0);
+        fd1 = open(temp2[0], O_CREATE | O_RDWR);
+        // printf(1, "%d fd\n", fileDesc[0]);
+        dup(fd1);
+      }
+      memset(temp1, 0, sizeof(temp1));
+      memset(temp2, 0, sizeof(temp2));
+      op = isPresent(6, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      {
+        flag1 = 1;
+        printf(1, "Greater\n");
+        for (int i = 0; i < output; i++)
+        {
+          temp1[i] = leftCmnd[i];
+        }
+        int ee = 0;
+        for (int i = output + 1; i < size; i++)
+        {
+          temp2[ee++] = leftCmnd[i];
+        }
+        // printf(1, "Fork");
+        fd2 = open(temp2[0], O_CREATE | O_RDWR);
+        close(1);
+        // printf(1, "%d fd\n", fileDesc[1]);
+        dup(fd2);
+      }
       close(1);
       dup(fileDesc[1]);
       close(fileDesc[0]);
       close(fileDesc[1]);
+      if (flag1 == 1)
+      {
+        exec(temp1[0], temp1);
+      }
       exec(leftCmnd[0], leftCmnd);
     }
     cid2 = fork();
     if (cid2 == 0)
     {
+      memset(temp1, 0, sizeof(temp1));
+      memset(temp2, 0, sizeof(temp2));
+      int op = isPresent(5, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      { //<<<<<<
+        // printf(1, "Less\n");
+        flag2 = 1;
+        for (int i = 0; i < input; i++)
+        {
+          temp1[i] = rightCmnd[i];
+        }
+        int ee = 0;
+        for (int i = input + 1; i < size; i++)
+        {
+          temp2[ee++] = rightCmnd[i];
+        }
+        close(0);
+        fd1 = open(temp2[0], O_CREATE | O_RDWR);
+        // printf(1, "%d fd\n", fileDesc[0]);
+        dup(fd1);
+      }
+      memset(temp1, 0, sizeof(temp1));
+      memset(temp2, 0, sizeof(temp2));
+      op = isPresent(6, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
+      if (op == 1)
+      {
+        flag2 = 1;
+        // printf(1, "Greater\n");
+        for (int i = 0; i < output; i++)
+        {
+          temp1[i] = rightCmnd[i];
+        }
+        int ee = 0;
+        for (int i = output + 1; i < size; i++)
+        {
+          temp2[ee++] = rightCmnd[i];
+        }
+        // printf(1, "Fork");
+        fd2 = open(temp2[0], O_CREATE | O_RDWR);
+        close(1);
+        // printf(1, "%d fd\n", fileDesc[1]);
+        dup(fd2);
+      }
+      // stringjoin(rightCmnd, temp2);
       close(0);
       dup(fileDesc[0]);
       close(fileDesc[0]);
       close(fileDesc[1]);
+      if (flag2 == 1)
+      {
+        exec(temp1[0], temp1);
+      }
       exec(rightCmnd[0], rightCmnd);
     }
     close(fileDesc[0]);
@@ -411,9 +1006,25 @@ void utilityFunction(char *buf)
     wait(0);
     wait(0);
     break;
+  case -1: //NORMAL EXEC
+    if (cmd_array[0] == 0)
+      exit(-1);
+    // printf(1, "Running from down\n");
+    // int ii = 0;
+    // while (cmd_array[ii])
+    // {
+    //   printf(1, "%s\n", cmd_array[ii]);
+    //   ii++;
+    // }
+    // printf(1,"last : %s\n", buf);
+    exec(cmd_array[0], cmd_array);
+    printf(2, "Illegal Command or Argument\n");
+    break;
   }
   free(rightCmnd);
   free(leftCmnd);
+  free(cmd_array);
+
   return;
 }
 
@@ -437,7 +1048,6 @@ int main(void)
     gets(buf, sizeof(buf));
     if (checkIfExit(buf) == 0)
     {
-      free(cmd_array);
       free(buf);
       exit(0);
     }
@@ -446,7 +1056,6 @@ int main(void)
     {
       // printf(1, "Running util : %d\n", i);
       utilityFunction(buf);
-      free(cmd_array);
       exit(0);
       // printf(1, "Completed util : %d\n", i);
       // i++;
