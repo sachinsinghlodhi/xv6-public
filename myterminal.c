@@ -6,10 +6,6 @@
 // #include "string.h"
 
 int present;
-struct cmnds
-{
-  char comm[40];
-};
 
 int stringcpy(char *s, const char *t, int n)
 {
@@ -65,6 +61,53 @@ void separatecmd_array(char *buff, char **cmd_array, int *size)
     }
   }
   *size = idx;
+}
+
+char **make_tokens(char *cmd_)
+{
+  char *cmd_sp;
+  char **my_array;
+  my_array = (char **)malloc(50 * sizeof(my_array));
+  int index = 0;
+  int temp = 0;
+  int mnd = 0;
+  cmd_sp = (char *)malloc(200 * sizeof(cmd_sp));
+  for (int i = 0; i < strlen(cmd_); i++)
+  {
+    if (cmd_[i] == '"' && mnd == 0)
+      mnd = 1;
+
+    if (cmd_[i] == '"' && mnd == 1)
+      mnd = 0;
+    if (mnd == 0)
+    {
+      if (cmd_[i] == ' ' || cmd_[i] == '\n')
+      {
+
+        cmd_sp[index] = '\0';
+
+        if (index != 0)
+        {
+          my_array[temp] = (char *)malloc(200 * sizeof(cmd_sp));
+          strcpy(my_array[temp], cmd_sp);
+          temp++;
+          index = 0;
+        }
+      }
+
+      else
+      {
+        cmd_sp[index++] = cmd_[i];
+      }
+    }
+    else
+    {
+      cmd_sp[index++] = cmd_[i];
+    }
+  }
+  free(cmd_sp);
+  my_array[temp] = 0;
+  return my_array;
 }
 
 int isPresent(int operator, char ** cmd_array, int *lastIdx, int size, int *pindex, int *input, int *output, int *present)
@@ -235,16 +278,16 @@ int contains(char *buff, char **cmd_array, int *lastIdx, int *size, int *pindex,
     return 3;
   }
   else if (isPresent(4, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
-  { //PIPE
+  {
     // printf(1, "Found |\n");
 
     return 4;
   }
-  // else if (isPresent(7, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
-  // {
-  //   //NORMAL
-  //   return 7;
-  // }
+  else if (isPresent(7, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
+  {
+    //NORMAL
+    return 7;
+  }
   else if (isPresent(6, cmd_array, lastIdx, *size, pindex, input, output, present) == 1)
   {
     //NORMAL
@@ -291,9 +334,54 @@ void utilityFunction(char *buf)
   char *temp[10];
   char *temp1[10];
   char *temp2[10];
+  char *lc;
+  char *rc;
+  int splitindex = -1;
+  char **ltokenized;
+  char **rtokenized;
+  char *inputfilename;
+  char *outputfilename;
+  int pipefd[2];
   int present = -1;
-  int fd1 = 0, fd2 = 0;
+  int fd1 = 0;
   memset(cmd_array, 0, sizeof(cmd_array));
+  char backup[200];
+  memset(backup, 0, sizeof(backup));
+  for (int i = 0; i < strlen(buf); i++)
+  {
+    backup[i] = buf[i];
+  }
+  for (int i = 0; i < strlen(buf); i++)
+  {
+    // printf(1, "%c at %d\n", buf[i], i);
+    if (buf[i] == '&' && buf[i + 1] == '&')
+    {
+      // printf(1, "%c && %d\n", buf[i], i);
+      splitindex = i;
+      break;
+    }
+    if (buf[i] == '|' && buf[i + 1] == '|')
+    {
+      // printf(1, "%c || %d\n", buf[i], i);
+      splitindex = i;
+      break;
+    }
+    if (buf[i] == '|')
+    {
+      // printf(1, "%c | %d\n", buf[i], i);
+      // printf(1, "TTTTTRUE %d\n", i);
+      splitindex = i;
+      break;
+    }
+
+    if (buf[i] == ';')
+    {
+      // printf(1, "%c ; %d\n", buf[i], i);
+      splitindex = i;
+      break;
+    }
+    // printf(1,"%d lastchar", buf[i + 1]);
+  }
   separatecmd_array(buf, cmd_array, &size);
   // char temp[200];
 
@@ -305,8 +393,9 @@ void utilityFunction(char *buf)
   int pid1;
   // int pid2;
   int cid2;
-  int flag1 = 0;
-  int flag2 = 0;
+
+  // int flag1 = 0;
+  // int flag2 = 0;
   int fileDesc[2];
   char *leftCmnd[10];
   memset(leftCmnd, 0, sizeof(leftCmnd));
@@ -384,19 +473,23 @@ void utilityFunction(char *buf)
   //   printf(1, "%s %d\n", rightCmnd[i], strlen(rightCmnd[i]));
   //   i++;
   // }
-  if (strcmp("executeCommands", cmd_array[0]) == 0) {
+  if (strcmp("executeCommands", cmd_array[0]) == 0)
+  {
     fd1 = open(cmd_array[1], O_CREATE | O_RDWR);
     memset(temp, 0, sizeof(temp));
     char ch;
     char *ptr = (char *)malloc(200);
     memset(ptr, 0, sizeof(ptr));
     char *head = ptr;
-    while(read(fd1,&ch,1) == 1) {
+    while (read(fd1, &ch, 1) == 1)
+    {
       *head = ch;
       head++;
-      if (ch == '\n') {
+      if (ch == '\n')
+      {
         cid1 = fork();
-        if (cid1 == 0) {
+        if (cid1 == 0)
+        {
           utilityFunction(ptr);
         }
         wait(0);
@@ -409,12 +502,12 @@ void utilityFunction(char *buf)
   switch (operator)
   {
   default:
-    printf(1, "Running from up\n");
+    // printf(1, "Running from default\n");
     if (cmd_array[0] == 0)
       exit(-1);
     if (operator== 5)
     { //<<<<<<
-      // printf(1, "Less\n");
+      
       cid1 = fork();
       if (cid1 == 0)
       {
@@ -431,7 +524,7 @@ void utilityFunction(char *buf)
     }
     else if (operator== 6)
     {
-      // printf(1, "Greater\n");
+      
       cid1 = fork();
       if (cid1 == 0)
       {
@@ -458,7 +551,8 @@ void utilityFunction(char *buf)
     cid1 = fork();
     if (cid1 == 0)
     {
-      if (leftCmnd[0] == 0) {
+      if (leftCmnd[0] == 0)
+      {
         printf(2, "Illegal Command or Argument\n");
         return;
       }
@@ -482,7 +576,7 @@ void utilityFunction(char *buf)
       int op = isPresent(5, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       { //<<<<<<
-        printf(1, "Less\n");
+        
         for (int i = 0; i < input; i++)
         {
           temp1[i] = leftCmnd[i];
@@ -507,7 +601,7 @@ void utilityFunction(char *buf)
       op = isPresent(6, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       {
-        printf(1, "Greater\n");
+        
         for (int i = 0; i < output; i++)
         {
           temp1[i] = leftCmnd[i];
@@ -555,7 +649,7 @@ void utilityFunction(char *buf)
       int op = isPresent(5, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       { //<<<<<<
-        // printf(1, "Less\n");
+        
         for (int i = 0; i < input; i++)
         {
           temp1[i] = rightCmnd[i];
@@ -580,7 +674,7 @@ void utilityFunction(char *buf)
       op = isPresent(6, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       {
-        // printf(1, "Greater\n");
+        
         for (int i = 0; i < output; i++)
         {
           temp1[i] = rightCmnd[i];
@@ -620,7 +714,7 @@ void utilityFunction(char *buf)
       int op = isPresent(5, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       { //<<<<<<
-        printf(1, "Less\n");
+        
         for (int i = 0; i < input; i++)
         {
           temp1[i] = leftCmnd[i];
@@ -645,7 +739,7 @@ void utilityFunction(char *buf)
       op = isPresent(6, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       {
-        printf(1, "Greater\n");
+        
         for (int i = 0; i < output; i++)
         {
           temp1[i] = leftCmnd[i];
@@ -690,7 +784,7 @@ void utilityFunction(char *buf)
       int op = isPresent(5, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       { //<<<<<<
-        // printf(1, "Less\n");
+        
         for (int i = 0; i < input; i++)
         {
           temp1[i] = rightCmnd[i];
@@ -715,7 +809,7 @@ void utilityFunction(char *buf)
       op = isPresent(6, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       {
-        // printf(1, "Greater\n");
+        
         for (int i = 0; i < output; i++)
         {
           temp1[i] = rightCmnd[i];
@@ -756,7 +850,7 @@ void utilityFunction(char *buf)
       int op = isPresent(5, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       { //<<<<<<
-        printf(1, "Less\n");
+        
         for (int i = 0; i < input; i++)
         {
           temp1[i] = leftCmnd[i];
@@ -781,7 +875,7 @@ void utilityFunction(char *buf)
       op = isPresent(6, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       {
-        printf(1, "Greater\n");
+        
         for (int i = 0; i < output; i++)
         {
           temp1[i] = leftCmnd[i];
@@ -818,7 +912,7 @@ void utilityFunction(char *buf)
       int op = isPresent(5, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       { //<<<<<<
-        // printf(1, "Less\n");
+        
         for (int i = 0; i < input; i++)
         {
           temp1[i] = rightCmnd[i];
@@ -843,7 +937,7 @@ void utilityFunction(char *buf)
       op = isPresent(6, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
       if (op == 1)
       {
-        // printf(1, "Greater\n");
+        
         for (int i = 0; i < output; i++)
         {
           temp1[i] = rightCmnd[i];
@@ -877,146 +971,235 @@ void utilityFunction(char *buf)
     wait(0);
     wait(0);
     break;
+  case 7:
   case 4: //PIPE
-    // printf(1, "Found |\n");
-    flag1 = 0;
-    flag2 = 0;
-    if (pipe(fileDesc) < 0)
+    // printf(1, "Found | %d and split %d\n", operator, splitindex);
+    lc = malloc(200 * sizeof(lc));
+    rc = malloc(200 * sizeof(rc));
+    int lcindex = 0;
+    int rcindex = 0;
+    for (int i = 0; i < splitindex; i++)
     {
-      // free(leftCmnd);
-      // free(rightCmnd);
-      break;
+      lc[lcindex++] = backup[i];
     }
 
-    cid1 = fork();
-    if (cid1 == 0)
+    lc[lcindex++] = ' ';
+    lc[lcindex] = '\0';
+    for (int i = splitindex + 1; i < strlen(backup); i++)
     {
-      memset(temp1, 0, sizeof(temp1));
-      memset(temp2, 0, sizeof(temp2));
-      int op = isPresent(5, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
-      if (op == 1)
-      { //<<<<<<
-        flag1 = 1;
-        printf(1, "Less\n");
-        for (int i = 0; i < input; i++)
-        {
-          temp1[i] = leftCmnd[i];
-        }
-        int ee = 0;
-        for (int i = input + 1; i < size; i++)
-        {
-          temp2[ee++] = leftCmnd[i];
-        }
-        close(0);
-        fd1 = open(temp2[0], O_CREATE | O_RDWR);
-        // printf(1, "%d fd\n", fileDesc[0]);
-        dup(fd1);
-      }
-      memset(temp1, 0, sizeof(temp1));
-      memset(temp2, 0, sizeof(temp2));
-      op = isPresent(6, leftCmnd, &lastIdx, size, &pindex, &input, &output, &present);
-      if (op == 1)
-      {
-        flag1 = 1;
-        printf(1, "Greater\n");
-        for (int i = 0; i < output; i++)
-        {
-          temp1[i] = leftCmnd[i];
-        }
-        int ee = 0;
-        for (int i = output + 1; i < size; i++)
-        {
-          temp2[ee++] = leftCmnd[i];
-        }
-        // printf(1, "Fork");
-        fd2 = open(temp2[0], O_CREATE | O_RDWR);
-        close(1);
-        // printf(1, "%d fd\n", fileDesc[1]);
-        dup(fd2);
-      }
-      close(1);
-      dup(fileDesc[1]);
-      close(fileDesc[0]);
-      close(fileDesc[1]);
-      if (flag1 == 1)
-      {
-        exec(temp1[0], temp1);
-      }
-      exec(leftCmnd[0], leftCmnd);
+      rc[rcindex++] = backup[i];
     }
-    cid2 = fork();
-    if (cid2 == 0)
+    rc[rcindex] = '\0';
+
+    int liind = -1;
+    int roind = -1;
+    for (int i = 0; i < strlen(lc); i++)
     {
-      memset(temp1, 0, sizeof(temp1));
-      memset(temp2, 0, sizeof(temp2));
-      int op = isPresent(5, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
-      if (op == 1)
-      { //<<<<<<
-        // printf(1, "Less\n");
-        flag2 = 1;
-        for (int i = 0; i < input; i++)
-        {
-          temp1[i] = rightCmnd[i];
-        }
-        int ee = 0;
-        for (int i = input + 1; i < size; i++)
-        {
-          temp2[ee++] = rightCmnd[i];
-        }
-        close(0);
-        fd1 = open(temp2[0], O_CREATE | O_RDWR);
-        // printf(1, "%d fd\n", fileDesc[0]);
-        dup(fd1);
-      }
-      memset(temp1, 0, sizeof(temp1));
-      memset(temp2, 0, sizeof(temp2));
-      op = isPresent(6, rightCmnd, &lastIdx, size, &pindex, &input, &output, &present);
-      if (op == 1)
-      {
-        flag2 = 1;
-        // printf(1, "Greater\n");
-        for (int i = 0; i < output; i++)
-        {
-          temp1[i] = rightCmnd[i];
-        }
-        int ee = 0;
-        for (int i = output + 1; i < size; i++)
-        {
-          temp2[ee++] = rightCmnd[i];
-        }
-        // printf(1, "Fork");
-        fd2 = open(temp2[0], O_CREATE | O_RDWR);
-        close(1);
-        // printf(1, "%d fd\n", fileDesc[1]);
-        dup(fd2);
-      }
-      // stringjoin(rightCmnd, temp2);
-      close(0);
-      dup(fileDesc[0]);
-      close(fileDesc[0]);
-      close(fileDesc[1]);
-      if (flag2 == 1)
-      {
-        exec(temp1[0], temp1);
-      }
-      exec(rightCmnd[0], rightCmnd);
+      if (lc[i] == '<')
+        liind = i;
     }
-    close(fileDesc[0]);
-    close(fileDesc[1]);
-    wait(0);
-    wait(0);
+    for (int i = 0; i < strlen(rc); i++)
+    {
+      if (rc[i] == '>')
+        roind = i;
+    }
+
+    if (liind == -1 && roind == -1)
+    {
+      ltokenized = make_tokens(lc);
+      rtokenized = make_tokens(rc);
+      if (pipe(pipefd) == -1)
+      {
+        exit(-1);
+      }
+      if (fork() == 0)
+      {
+        close(1);
+        dup(pipefd[1]);
+        close(pipefd[0]);
+        close(pipefd[1]);
+        exec(ltokenized[0], ltokenized);
+      }
+      if (fork() == 0)
+      {
+        close(0);
+        dup(pipefd[0]);
+        close(pipefd[0]);
+        close(pipefd[1]);
+        exec(rtokenized[0], rtokenized);
+      }
+      close(pipefd[0]);
+      close(pipefd[1]);
+      wait(0);
+      wait(0);
+    }
+
+    // IO redirection case
+    else
+    {
+      inputfilename = malloc(200 * sizeof(inputfilename));
+      outputfilename = malloc(200 * sizeof(inputfilename));
+      if (pipe(pipefd) == -1)
+      {
+        exit(-1);
+      }
+      int pd[2];
+      if (liind != -1) // IO REDIRECTION IN LC
+      {
+        char *lci = malloc(200 * sizeof(lc));
+        int lciindex = 0;
+        for (int i = 0; i < liind; i++)
+        {
+          lci[lciindex++] = lc[i];
+        }
+        lci[lciindex] = '\0';
+        ltokenized = make_tokens(lci);
+
+        int filenameindex = 0;
+        int i = liind + 1;
+        while (lc[i] == ' ')
+        {
+          i++;
+        }
+        while (lc[i] != ' ')
+        {
+          inputfilename[filenameindex++] = lc[i];
+          i++;
+        }
+        inputfilename[filenameindex] = '\0';
+
+        if (roind != -1) // output redirect in rc as well lc
+        {
+          int rcoindex = 0;
+          char *rci = malloc(200 * sizeof(lc));
+          for (int i = 0; i < roind; i++)
+          {
+            rci[rcoindex++] = rc[i];
+          }
+          rci[rcoindex] = '\0';
+          rtokenized = make_tokens(rci);
+          int filenameindex = 0;
+          int i = roind + 1;
+          while (rc[i] == ' ')
+          {
+            i++;
+          }
+          while (rc[i] != ' ' && rc[i] != '\n')
+          {
+            outputfilename[filenameindex++] = rc[i];
+            i++;
+          }
+          outputfilename[filenameindex] = '\0';
+          pd[0] = open(inputfilename, O_CREATE | O_RDWR);
+          pd[1] = open(outputfilename, O_CREATE | O_RDWR);
+          if (fork() == 0)
+          {
+            close(0);
+            dup(pd[0]);
+            close(1);
+            dup(pipefd[1]);
+            close(pipefd[0]);
+            close(pipefd[1]);
+            exec(ltokenized[0], ltokenized);
+          }
+          if (fork() == 0)
+          {
+            close(1);
+            dup(pd[1]);
+            close(0);
+            dup(pipefd[0]);
+            close(pipefd[0]);
+            close(pipefd[1]);
+            exec(rtokenized[0], rtokenized);
+          }
+          close(pipefd[0]);
+          close(pipefd[1]);
+          wait(0);
+          wait(0);
+        }
+        else // io not in rc only in lc
+        {
+          ltokenized = make_tokens(lci);
+          rtokenized = make_tokens(rc);
+          pd[0] = open(inputfilename, O_CREATE | O_RDWR);
+          if (fork() == 0)
+          {
+            close(0);
+            dup(pd[0]);
+            close(1);
+            dup(pipefd[1]);
+            close(pipefd[0]);
+            close(pipefd[1]);
+            exec(ltokenized[0], ltokenized);
+          }
+          if (fork() == 0)
+          {
+            close(0);
+            dup(pipefd[0]);
+            close(pipefd[0]);
+            close(pipefd[1]);
+            exec(rtokenized[0], rtokenized);
+          }
+          close(pipefd[0]);
+          close(pipefd[1]);
+          wait(0);
+          wait(0);
+        }
+      }
+      else // io only in rc
+      {
+        ltokenized = make_tokens(lc);
+        int rcoindex = 0;
+        char *rci = malloc(200 * sizeof(lc));
+
+        for (int i = 0; i < roind; i++)
+        {
+          rci[rcoindex++] = rc[i];
+        }
+        rci[rcoindex] = '\0';
+        rtokenized = make_tokens(rci);
+        int filenameindex = 0;
+        int i = roind + 1;
+        while (rc[i] == ' ')
+        {
+          i++;
+        }
+        while (rc[i] != ' ' && rc[i] != '\n')
+        {
+          outputfilename[filenameindex++] = rc[i];
+          i++;
+        }
+        outputfilename[filenameindex] = '\0';
+        rtokenized = make_tokens(rci);
+        pd[1] = open(outputfilename, O_CREATE | O_RDWR);
+        if (fork() == 0)
+        {
+          close(1);
+          dup(pipefd[1]);
+          close(pipefd[0]);
+          close(pipefd[1]);
+          exec(ltokenized[0], ltokenized);
+        }
+        if (fork() == 0)
+        {
+          close(0);
+          dup(pipefd[0]);
+          close(1);
+          dup(pd[1]);
+          close(pipefd[0]);
+          close(pipefd[1]);
+          exec(rtokenized[0], rtokenized);
+        }
+        close(pipefd[0]);
+        close(pipefd[1]);
+        wait(0);
+        wait(0);
+      }
+    }
     break;
   case -1: //NORMAL EXEC
     if (cmd_array[0] == 0)
       exit(-1);
-    // printf(1, "Running from down\n");
-    // int ii = 0;
-    // while (cmd_array[ii])
-    // {
-    //   printf(1, "%s\n", cmd_array[ii]);
-    //   ii++;
-    // }
-    // printf(1,"last : %s\n", buf);
     exec(cmd_array[0], cmd_array);
     printf(2, "Illegal Command or Argument\n");
     break;
